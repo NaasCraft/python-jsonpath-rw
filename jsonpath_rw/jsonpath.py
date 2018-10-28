@@ -25,12 +25,28 @@ class JSONPath(object):
         """
         raise NotImplementedError()
 
+    def set(self, data, val, create_path=True):
+        """Sets `val` at the specified path in `data`.
+
+        Will create the necessary path if `create_path` is true and `create` is
+        implemented.
+        """
+        raise NotImplementedError()
+
+    def create(self, data):
+        """Creates the specified path in `data`."""
+        raise NotImplementedError()
+
+    def setdefault(self, data, val, create_path=True):
+        """Equivalent to `set` if `find` does not return, else noop."""
+        if not self.find(data):
+            self.set(data, val, create_path)
+
     def update(self, data, val):
         """
         Returns `data` with the specified path replaced by `val`. Only updates
         if the specified path exists.
         """
-
         raise NotImplementedError()
 
     def child(self, child):
@@ -178,6 +194,25 @@ class Root(JSONPath):
             else:
                 return Root().find(data.context)
 
+    def set(self, data, val, create_path=True):
+        if not isinstance(data, DatumInContext):
+            raise NotImplementedError(
+                "Cannot set the root if not a `DatumInContext`."
+            )
+        data.value = val
+
+    def setdefault(self, data, val, create_path=True):
+        if not isinstance(data, DatumInContext):
+            raise NotImplementedError(
+                "Cannot set the root if not a `DatumInContext`."
+            )
+        data.value = data.value or val
+
+    def create(self, data):
+        raise NotImplementedError(
+            "Cannot create a root path: it always exists."
+        )
+
     def update(self, data, val):
         return val
 
@@ -197,6 +232,27 @@ class This(JSONPath):
 
     def find(self, datum):
         return [DatumInContext.wrap(datum)]
+
+    def set(self, data, val, create_path=True):
+        if not isinstance(data, DatumInContext):
+            raise NotImplementedError(
+                "Cannot set %s if not a `DatumInContext`." % self
+            )
+        data.value = val
+
+        # NOTE: check how this updates the context and if we should worry
+
+    def setdefault(self, data, val, create_path=True):
+        if not isinstance(data, DatumInContext):
+            raise NotImplementedError(
+                "Cannot set %s if not a `DatumInContext`." % self
+            )
+        data.value = data.value or val
+
+    def create(self, data):
+        raise NotImplementedError(
+            "Cannot create a '%r' path: it always exists." % self
+        )
 
     def update(self, data, val):
         return val
@@ -230,6 +286,15 @@ class Child(JSONPath):
                 for subdata in self.left.find(datum)
                 if not isinstance(subdata, AutoIdForDatum)
                 for submatch in self.right.find(subdata)]
+
+    def set(self, data, val, create_path=True):
+        pass
+
+    def setdefault(self, data, val, create_path=True):
+        pass
+
+    def create(self, data):
+        pass
 
     def update(self, data, val):
         for datum in self.left.find(data):
@@ -282,6 +347,15 @@ class Where(JSONPath):
 
     def find(self, data):
         return [subdata for subdata in self.left.find(data) if self.right.find(subdata)]
+
+    def set(self, data, val, create_path=True):
+        pass
+
+    def setdefault(self, data, val, create_path=True):
+        pass
+
+    def create(self, data):
+        pass
 
     def update(self, data, val):
         for datum in self.find(data):
@@ -342,6 +416,15 @@ class Descendants(JSONPath):
             
     def is_singular():
         return False
+
+    def set(self, data, val, create_path=True):
+        pass
+
+    def setdefault(self, data, val, create_path=True):
+        pass
+
+    def create(self, data):
+        pass
 
     def update(self, data, val):
         # Get all left matches into a list
@@ -420,7 +503,7 @@ class Intersect(JSONPath):
 class Fields(JSONPath):
     """
     JSONPath referring to some field of the current object.
-    Concrete syntax ix comma-separated field names.
+    Concrete syntax is a comma-separated list of field names.
 
     WARNING: If '*' is any of the field names, then they will
     all be returned.
@@ -455,6 +538,15 @@ class Fields(JSONPath):
         return  [field_datum
                  for field_datum in [self.get_field_datum(datum, field) for field in self.reified_fields(datum)]
                  if field_datum is not None]
+
+    def set(self, data, val, create_path=True):
+        pass
+
+    def setdefault(self, data, val, create_path=True):
+        pass
+
+    def create(self, data):
+        pass
 
     def update(self, data, val):
         for field in self.reified_fields(DatumInContext.wrap(data)):
@@ -491,6 +583,15 @@ class Index(JSONPath):
             return [DatumInContext(datum.value[self.index], path=self, context=datum)]
         else:
             return []
+
+    def set(self, data, val, create_path=True):
+        pass
+
+    def setdefault(self, data, val, create_path=True):
+        pass
+
+    def create(self, data):
+        pass
 
     def update(self, data, val):
         if len(data) > self.index:
@@ -546,6 +647,15 @@ class Slice(JSONPath):
             return [DatumInContext(datum.value[i], path=Index(i), context=datum) for i in xrange(0, len(datum.value))]
         else:
             return [DatumInContext(datum.value[i], path=Index(i), context=datum) for i in range(0, len(datum.value))[self.start:self.end:self.step]]
+
+    def set(self, data, val, create_path=True):
+        pass
+
+    def setdefault(self, data, val, create_path=True):
+        pass
+
+    def create(self, data):
+        pass
 
     def update(self, data, val):
         for datum in self.find(data):
